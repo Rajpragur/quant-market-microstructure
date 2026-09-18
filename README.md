@@ -70,24 +70,6 @@ Then open `http://127.0.0.1:8080`. The API endpoints are `/api/health` and
 `/api/report`. The server contains no trading controls and requires no
 credentials.
 
-The production-style React frontend lives in `frontend/` and does not use
-Next.js:
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-For a static deployment:
-
-```bash
-npm run build
-```
-
-Deploy `frontend/dist/` to any static host. The UI is read-only and falls back
-to embedded fixture data when the API is not available.
-
 Replay a versioned binary event file:
 
 ```bash

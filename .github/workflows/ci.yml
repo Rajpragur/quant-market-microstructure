@@ -19,3 +19,9 @@ jobs:
         run: python3 tests/test_kalshi_snapshot.py
       - name: Generate report
         run: python3 tools/generate_report.py
+      - name: Frontend install
+        working-directory: frontend
+        run: npm ci
+      - name: Frontend build
+        working-directory: frontend
+        run: npm run build

@@ -37,9 +37,12 @@ function App() {
   useEffect(() => {
     if (!simRunning) return undefined
     const timer = setInterval(() => {
-      setTicks((value) => value + 1)
-      setSimPnl((value) => value + (Math.sin(Date.now() / 700) * 3.2))
-      setSimInventory((value) => Math.max(0, value + (Math.random() > 0.5 ? 2 : -1)))
+      setTicks((value) => {
+        const next = value + 1
+        setSimPnl((pnl) => pnl + (Math.sin(next / 2) * 3.2))
+        setSimInventory((inventory) => Math.max(0, inventory + (next % 3 === 0 ? 2 : -1)))
+        return next
+      })
       setUpdated(new Date())
     }, 700)
     return () => clearInterval(timer)

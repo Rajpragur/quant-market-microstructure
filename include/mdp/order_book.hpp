@@ -4,6 +4,7 @@
 #include <deque>
 #include <map>
 #include <optional>
+#include <unordered_map>
 #include <vector>
 
 namespace mdp {
@@ -26,10 +27,18 @@ struct Trade {
     friend bool operator==(const Trade&, const Trade&) = default;
 };
 
+struct OrderLocation {
+    std::int64_t price_ticks;
+    Side side;
+};
+
 class OrderBook {
 public:
     [[nodiscard]] std::vector<Trade> submit_limit(Order incoming) {
         std::vector<Trade> trades;
+        if (incoming.quantity == 0 || locations_.contains(incoming.order_id)) {
+            return trades;
+        }
         if (incoming.side == Side::Buy) {
             match_buy(incoming, trades);
         } else {
@@ -37,12 +46,33 @@ public:
         }
         if (incoming.quantity != 0) {
             resting(incoming).push_back(incoming);
+            locations_.emplace(incoming.order_id,
+                               OrderLocation{incoming.price_ticks, incoming.side});
         }
         return trades;
     }
 
     [[nodiscard]] bool cancel(std::uint64_t order_id) {
-        return cancel_from(bids_, order_id) || cancel_from(asks_, order_id);
+        const auto location = locations_.find(order_id);
+        if (location == locations_.end()) {
+            return false;
+        }
+        Levels& levels = location->second.side == Side::Buy ? bids_ : asks_;
+        auto level = levels.find(location->second.price_ticks);
+        if (level == levels.end()) {
+            return false;
+        }
+        for (auto order = level->second.begin(); order != level->second.end(); ++order) {
+            if (order->order_id == order_id) {
+                level->second.erase(order);
+                if (level->second.empty()) {
+                    levels.erase(level);
+                }
+                locations_.erase(location);
+                return true;
+            }
+        }
+        return false;
     }
 
     [[nodiscard]] std::optional<std::int64_t> best_bid() const {
@@ -72,6 +102,7 @@ private:
 
     Levels bids_;
     Levels asks_;
+    std::unordered_map<std::uint64_t, OrderLocation> locations_;
 
     [[nodiscard]] std::deque<Order>& resting(const Order& order) {
         return order.side == Side::Buy ? bids_[order.price_ticks]
@@ -95,6 +126,7 @@ private:
                 incoming.quantity -= executed;
                 resting_order.quantity -= executed;
                 if (resting_order.quantity == 0) {
+                    locations_.erase(resting_order.order_id);
                     orders.pop_front();
                 }
             }
@@ -121,6 +153,7 @@ private:
                 incoming.quantity -= executed;
                 resting_order.quantity -= executed;
                 if (resting_order.quantity == 0) {
+                    locations_.erase(resting_order.order_id);
                     orders.pop_front();
                 }
             }

@@ -23,6 +23,10 @@ The first order-book slice is now working in `include/mdp/order_book.hpp` and
 is covered by `tests/test_order_book.cpp`. It implements price-time priority,
 partial fills, cancellation, and best bid/ask queries.
 
+Lesson 21 adds an order-ID location index for duplicate-ID validation and
+targeted cancellation. The trade-off is documented in
+`docs/lesson21_order_index.md` and measured rather than assumed to be faster.
+
 Kalshi is the first external venue adapter. `tools/kalshi_snapshot.py` reads
 public market metadata or a single order-book snapshot without credentials:
 

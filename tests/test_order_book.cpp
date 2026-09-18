@@ -12,6 +12,9 @@ int main() {
     const auto ignored_3 = book.submit_limit({3, mdp::Side::Sell, 102, 8});
     assert(ignored_1.empty() && ignored_2.empty() && ignored_3.empty());
 
+    const auto duplicate = book.submit_limit({1, mdp::Side::Buy, 99, 2});
+    assert(duplicate.empty());
+
     assert(book.best_ask() == std::optional<std::int64_t>{101});
     assert(book.ask_quantity(101) == 8);
 
@@ -26,6 +29,7 @@ int main() {
 
     assert(book.cancel(2));
     assert(!book.cancel(2));
+    assert(!book.cancel(999));
     assert(book.best_ask() == std::optional<std::int64_t>{102});
     assert(book.ask_quantity(102) == 8);
 

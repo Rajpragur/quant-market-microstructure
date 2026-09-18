@@ -1,0 +1,18 @@
+{
+  "project": "Quant Market Microstructure Lab",
+  "status": "research-only; no live trading",
+  "components": [
+    "price-time-priority order book",
+    "binary deterministic replay",
+    "queue-aware execution simulator",
+    "top-of-book microstructure features",
+    "read-only Kalshi market adapter"
+  ],
+  "controls": {
+    "fees": "integer ticks",
+    "latency": "explicit availability timestamp",
+    "queue_position": "modelled as contracts ahead",
+    "credentials": "none required for public adapter"
+  },
+  "interpretation": "A signal is not considered executable until queue position, latency, fees, and partial fills are included."
+}

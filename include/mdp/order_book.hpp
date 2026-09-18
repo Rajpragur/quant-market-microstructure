@@ -75,6 +75,41 @@ public:
         return false;
     }
 
+    [[nodiscard]] bool modify(std::uint64_t order_id, std::int64_t new_price,
+                              std::uint64_t new_quantity) {
+        const auto location = locations_.find(order_id);
+        if (location == locations_.end() || new_quantity == 0) {
+            return false;
+        }
+        Levels& old_levels = location->second.side == Side::Buy ? bids_ : asks_;
+        auto old_level = old_levels.find(location->second.price_ticks);
+        if (old_level == old_levels.end()) {
+            return false;
+        }
+        auto old_order = old_level->second.begin();
+        while (old_order != old_level->second.end() && old_order->order_id != order_id) {
+            ++old_order;
+        }
+        if (old_order == old_level->second.end()) {
+            return false;
+        }
+        if (new_price == location->second.price_ticks &&
+            new_quantity <= old_order->quantity) {
+            old_order->quantity = new_quantity;
+            return true;
+        }
+        const Side side = location->second.side;
+        old_level->second.erase(old_order);
+        if (old_level->second.empty()) {
+            old_levels.erase(old_level);
+        }
+        locations_.erase(location);
+        const Order replacement{order_id, side, new_price, new_quantity};
+        resting(replacement).push_back(replacement);
+        locations_.emplace(order_id, OrderLocation{new_price, side});
+        return true;
+    }
+
     [[nodiscard]] std::optional<std::int64_t> best_bid() const {
         if (bids_.empty()) {
             return std::nullopt;
@@ -95,6 +130,16 @@ public:
 
     [[nodiscard]] std::uint64_t ask_quantity(std::int64_t price_ticks) const {
         return level_quantity(asks_, price_ticks);
+    }
+
+    [[nodiscard]] std::optional<std::uint64_t>
+    oldest_order_id(Side side, std::int64_t price_ticks) const {
+        const Levels& levels = side == Side::Buy ? bids_ : asks_;
+        const auto level = levels.find(price_ticks);
+        if (level == levels.end() || level->second.empty()) {
+            return std::nullopt;
+        }
+        return level->second.front().order_id;
     }
 
 private:

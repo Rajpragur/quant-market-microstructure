@@ -53,6 +53,29 @@ Run the first benchmark with:
 ./build/bench_order_book
 ```
 
+Run the complete local verification:
+
+```bash
+./verify.sh
+```
+
+Generate the read-only research report and start the local demo:
+
+```bash
+python3 tools/generate_report.py
+python3 tools/demo_server.py --port 8080
+```
+
+Then open `http://127.0.0.1:8080`. The API endpoints are `/api/health` and
+`/api/report`. The server contains no trading controls and requires no
+credentials.
+
+Replay a versioned binary event file:
+
+```bash
+./build/replay_events path/to/events.bin
+```
+
 The benchmark reports order submissions per second and trade count. Results
 must always be reported together with the machine, compiler, build type, and
 workload; a single throughput number is not a claim about exchange-level
@@ -68,3 +91,7 @@ performance.
 6. Add walk-forward evaluation with leakage checks
 7. Publish reproducible reports and a read-only demo API
 8. Add Linux CI and cross-machine benchmark comparisons
+
+The repository includes `.github/workflows/ci.yml`, which builds all C++
+targets, runs CTest, runs the Kalshi fixture test, and generates the report on
+every push and pull request.

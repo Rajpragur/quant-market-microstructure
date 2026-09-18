@@ -94,6 +94,20 @@ target_compile_options(test_features PRIVATE
 
 add_test(NAME test_features COMMAND test_features)
 
+add_executable(replay_events
+    tools/replay_events.cpp
+)
+
+target_include_directories(replay_events PRIVATE include)
+
+target_compile_options(replay_events PRIVATE
+    -Wall
+    -Wextra
+    -Wpedantic
+    -Wconversion
+    -Wsign-conversion
+)
+
 add_executable(bench_order_book
     benchmarks/bench_order_book.cpp
 )

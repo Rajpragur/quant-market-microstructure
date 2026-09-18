@@ -43,6 +43,40 @@ target_compile_options(test_order_book PRIVATE
 
 add_test(NAME test_order_book COMMAND test_order_book)
 
+add_executable(test_replay
+    tests/test_replay.cpp
+)
+
+target_include_directories(test_replay PRIVATE include)
+
+target_compile_options(test_replay PRIVATE
+    -UNDEBUG
+    -Wall
+    -Wextra
+    -Wpedantic
+    -Wconversion
+    -Wsign-conversion
+)
+
+add_test(NAME test_replay COMMAND test_replay)
+
+add_executable(test_execution_simulator
+    tests/test_execution_simulator.cpp
+)
+
+target_include_directories(test_execution_simulator PRIVATE include)
+
+target_compile_options(test_execution_simulator PRIVATE
+    -UNDEBUG
+    -Wall
+    -Wextra
+    -Wpedantic
+    -Wconversion
+    -Wsign-conversion
+)
+
+add_test(NAME test_execution_simulator COMMAND test_execution_simulator)
+
 add_executable(bench_order_book
     benchmarks/bench_order_book.cpp
 )

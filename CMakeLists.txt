@@ -77,6 +77,23 @@ target_compile_options(test_execution_simulator PRIVATE
 
 add_test(NAME test_execution_simulator COMMAND test_execution_simulator)
 
+add_executable(test_features
+    tests/test_features.cpp
+)
+
+target_include_directories(test_features PRIVATE include)
+
+target_compile_options(test_features PRIVATE
+    -UNDEBUG
+    -Wall
+    -Wextra
+    -Wpedantic
+    -Wconversion
+    -Wsign-conversion
+)
+
+add_test(NAME test_features COMMAND test_features)
+
 add_executable(bench_order_book
     benchmarks/bench_order_book.cpp
 )

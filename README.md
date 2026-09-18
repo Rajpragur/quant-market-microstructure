@@ -1,97 +1,141 @@
-# Quant Market Microstructure Lab
+# Quant Market Microstructure
 
-A from-scratch C++20 project for learning low latency systems, concurrency, and market data processing.
+A small, from-scratch C++20 market-microstructure lab focused on the part of trading systems that is easy to get wrong: **what actually happens between a market event, an order, and a fill**.
 
-This project is being implemented independently so every design choice can be understood and defended.
+The project started as a way to learn low-latency C++ properly. It now contains a price-time-priority limit-order book, deterministic event replay, queue-aware execution simulation, and a read-only Kalshi data adapter.
 
-## Current milestone
+The main question behind the project is simple:
 
-A bounded single producer single consumer queue with:
+> If a signal looks attractive on paper, does it still survive queue position, latency, partial fills, fees, and adverse selection?
 
-- FIFO behavior
-- Fixed capacity
-- Explicit full and empty behavior
-- Acquire and release atomics
-- CTest coverage
+This is a research and simulation project. It does not place live orders or claim live profitability.
 
-The next layer is a deterministic limit-order-book and replay engine. The goal
-is not to build another toy strategy or claim unrealistic backtest returns. It
-is to measure what market-microstructure signals survive realistic queue
-position, latency, partial fills, fees, and adverse selection.
+## What is here
 
-The first order-book slice is now working in `include/mdp/order_book.hpp` and
-is covered by `tests/test_order_book.cpp`. It implements price-time priority,
-partial fills, cancellation, and best bid/ask queries.
+### C++20 core
 
-Lesson 21 adds an order-ID location index for duplicate-ID validation and
-targeted cancellation. The trade-off is documented in
-`docs/lesson21_order_index.md` and measured rather than assumed to be faster.
+- Price-time-priority limit-order book
+- FIFO order queues at each price level
+- Limit-order matching and partial fills
+- Best bid/ask and level depth queries
+- Duplicate order-ID validation
+- Indexed cancellation
+- Order modification with queue-priority rules
+- Fixed-point integer prices instead of floating-point prices
+- SPSC queue using acquire/release atomics
 
-Kalshi is the first external venue adapter. `tools/kalshi_snapshot.py` reads
-public market metadata or a single order-book snapshot without credentials:
+### Replay and execution research
 
-```bash
-python3 tools/kalshi_snapshot.py --limit 10
-python3 tools/kalshi_snapshot.py --ticker KXEXAMPLE
+- Versioned binary market-event format
+- Explicit field-by-field serialization
+- Replay magic/version checks
+- Truncation and unreasonable-file detection
+- Replay command-line tool
+- Queue-position simulation
+- Exchange latency and order availability time
+- Partial fills
+- Integer-tick fees
+- Inventory and cash tracking
+- Spread, mid-price, microprice, and imbalance features
+
+### Kalshi integration
+
+`tools/kalshi_snapshot.py` reads public Kalshi market metadata and order-book snapshots. It is intentionally read-only and does not require API credentials for the public REST endpoints.
+
+The adapter is kept separate from execution code. Nothing in this repository can place a live order.
+
+## Design choices
+
+### Why C++20?
+
+The hot path is deliberately written in C++ so that data layout, ownership, allocations, atomics, and latency are visible rather than hidden behind a framework.
+
+### Why fixed-point prices?
+
+Prices are represented as integer ticks. This avoids floating-point equality problems and makes matching, serialization, fees, and replay deterministic.
+
+### Why an SPSC queue?
+
+The simplest fast pipeline has one producer and one consumer:
+
+```text
+market-data reader → SPSC queue → order-book owner
 ```
 
-The adapter is deliberately read-only. Kalshi's real-time WebSocket stream
-requires signed API-key headers, so credentials will not be needed for the
-public demo and will never be committed to this repository.
+The ownership model avoids having several threads mutate the same book and keeps synchronization limited to the queue boundary.
 
-## Build and test
+### Why start with `std::map` and `std::deque`?
+
+They make price ordering and FIFO behaviour easy to inspect and test. The project measures before replacing them with more complicated structures. A faster data structure is only useful if it improves the workload that matters.
+
+## Build and run
+
+Requirements:
+
+- C++20 compiler
+- CMake 3.20+
+- Python 3.10+
+
+From the repository root:
 
 ```bash
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ctest --test-dir build --output-on-failure
+python3 tests/test_kalshi_snapshot.py
 ```
 
-Run the first benchmark with:
-
-```bash
-./build/bench_order_book
-```
-
-Run the complete local verification:
+Or run the complete local check:
 
 ```bash
 ./verify.sh
 ```
 
-Generate the read-only research report and start the local demo:
+Run the synthetic order-book benchmark:
+
+```bash
+./build/bench_order_book
+```
+
+Run the replay tool:
+
+```bash
+./build/replay_events path/to/events.bin
+```
+
+Generate the read-only research report and start the local API:
 
 ```bash
 python3 tools/generate_report.py
 python3 tools/demo_server.py --port 8080
 ```
 
-Then open `http://127.0.0.1:8080`. The API endpoints are `/api/health` and
-`/api/report`. The server contains no trading controls and requires no
-credentials.
+Open `http://127.0.0.1:8080`. The API exposes only:
 
-Replay a versioned binary event file:
-
-```bash
-./build/replay_events path/to/events.bin
+```text
+GET /api/health
+GET /api/report
 ```
 
-The benchmark reports order submissions per second and trade count. Results
-must always be reported together with the machine, compiler, build type, and
-workload; a single throughput number is not a claim about exchange-level
-performance.
+There are no trading controls or credential inputs.
 
-## Learning path
+## Benchmark note
 
-1. Finish the deterministic order-book API and matching edge cases
-2. Add binary event capture and deterministic replay
-3. Normalize Kalshi prediction contracts into the same event/replay schema
-4. Add order-flow imbalance, microprice, and queue-position features
-5. Add latency-, fee-, and partial-fill-aware cross-venue execution simulation
-6. Add walk-forward evaluation with leakage checks
-7. Publish reproducible reports and a read-only demo API
-8. Add Linux CI and cross-machine benchmark comparisons
+The synthetic benchmark is useful for comparing changes on the same machine. It is not an exchange-performance claim. Results depend on the compiler, build type, CPU, workload, and data distribution, so every number should be reported with that context.
 
-The repository includes `.github/workflows/ci.yml`, which builds all C++
-targets, runs CTest, runs the Kalshi fixture test, and generates the report on
-every push and pull request.
+## Project status
+
+The repository is deliberately small and inspectable. The current implementation is suitable for studying and demonstrating:
+
+- low-level C++ design
+- market-data state reconstruction
+- order-book invariants
+- deterministic simulation
+- execution modelling
+- quantitative research hygiene
+
+The important remaining research work is not adding decorative strategy code. It is validating the simulator against real historical event streams and showing which apparent opportunities disappear once execution costs are modelled.
+
+## License
+
+No license has been selected yet. Until one is added, the repository is available for viewing and study, but reuse should be treated as not automatically permitted.
